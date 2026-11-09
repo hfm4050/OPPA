@@ -448,6 +448,8 @@ def produce(job, client, demo, reference):
         if result.get("render_version") == RENDER_VERSION:
             return work, result["veo_usd_for_one_success"]
     script_path = work / "script.json"
+    if os.environ.get("OPPA_WEB_PROGRESS"):
+        print("OPPA_STAGE script", flush=True)
     if script_path.exists():
         script = read_json(script_path)
     else:
@@ -461,12 +463,18 @@ def produce(job, client, demo, reference):
         write_json(script_path, script)
     intro = reference if demo else work / "intro.mp4"
     if not demo:
+        if os.environ.get("OPPA_WEB_PROGRESS"):
+            print("OPPA_STAGE voice", flush=True)
         for i, line in enumerate(script["lines"]):
             voice = work / f"voice{i}.wav"
             if not voice.exists():
                 atomic(voice, client.speech(host_text(line, 42), HOSTS[job["host"]]))
         if not intro.exists():
+            if os.environ.get("OPPA_WEB_PROGRESS"):
+                print("OPPA_STAGE veo", flush=True)
             client.motion(portrait, intro, job["veo"])
+    if os.environ.get("OPPA_WEB_PROGRESS"):
+        print("OPPA_STAGE render", flush=True)
     render(work, job, intro, script, demo)
     return work, deliver(work, job, script, demo)
 

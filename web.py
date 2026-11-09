@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,7 +26,37 @@ MEDIA = {"/": ROOT / "studio.html", "/studio.html": ROOT / "studio.html",
          **{f"/characters/{host}.png": ROOT / "characters" / f"{host}.png" for host in shorts.HOSTS}}
 RUNS = {}
 LOCK = threading.Lock()
+STAGES = {
+    "prepare": ("상품 사진 확인", 8),
+    "host": ("호스트 기준 이미지 생성", 45),
+    "script": ("대본 작성", 15),
+    "voice": ("음성 생성", 35),
+    "veo": ("Veo 인트로 생성", 120),
+    "render": ("영상 합성과 MP4 저장", 20),
+}
 KEY_FILE = shorts.DATA_ROOT / ".gemini-key.dpapi"
+
+
+def saved_videos(token=None):
+    folder = shorts.DATA_ROOT / "output/jobs"
+    pattern = f"web-{token}/*/short.mp4" if token else "web-*/*/short.mp4"
+    for file in folder.glob(pattern):
+        if not re.fullmatch(r"web-[a-f0-9]{16}", file.parent.parent.name):
+            continue
+        if re.fullmatch(r"[a-f0-9]{20}", file.parent.name) and (file.parent / "result.json").is_file():
+            try:
+                yield file.stat().st_mtime, file
+            except FileNotFoundError:
+                continue
+
+
+def saved_video(token=None):
+    return max(saved_videos(token), default=(0, None))[1]
+
+
+def video_info(file):
+    token = file.parent.parent.name.removeprefix("web-")
+    return {"id": token, "video": f"/video/web-{token}.mp4", "filePath": str(file)}
 
 
 def protect_key(value, *, decrypt=False):
@@ -86,12 +117,19 @@ def run_job(state, job, key, photos):
         shorts.write_json(manifest, [job])
         env = os.environ.copy()
         env["GEMINI_API_KEY"] = key
+        env["OPPA_WEB_PROGRESS"] = "1"
         commands = [["build", str(manifest)]]
         footwear = job.get("footwear")
         if not shorts.host_image(job["host"], footwear).is_file():
             flags = ["--footwear", footwear] if footwear else []
             commands.insert(0, ["hosts", job["host"], *flags])
+        else:
+            with LOCK:
+                state["stages"].remove("host")
         for command in commands:
+            if command[0] == "hosts":
+                with LOCK:
+                    state.update(stage="host", stage_started=time.monotonic())
             with subprocess.Popen(
                 [sys.executable, "-X", "utf8", "-u", str(ROOT / "shorts.py"), *command],
                 cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
@@ -99,15 +137,36 @@ def run_job(state, job, key, photos):
             ) as process:
                 for line in process.stdout:
                     with LOCK:
+                        if line.startswith("OPPA_STAGE ") and (stage := line.removeprefix("OPPA_STAGE ").strip()) in STAGES:
+                            state.update(stage=stage, stage_started=time.monotonic())
+                            continue
                         state["log"] = (state["log"] + line.replace(key, "[숨김]"))[-4500:]
                 if process.wait():
                     raise ValueError("제작을 완료하지 못했습니다. 실행 기록을 확인하세요.")
-        result = next((shorts.DATA_ROOT / "output/jobs" / job["id"]).glob("*/short.mp4"))
+        result = saved_video(job["id"].removeprefix("web-"))
+        if not result:
+            raise ValueError("저장된 완성 MP4를 찾을 수 없습니다.")
         with LOCK:
-            state.update(status="done", video=f'/video/{job["id"]}.mp4', file=result)
-    except (OSError, ValueError, StopIteration, KeyError, TypeError) as error:
+            state.update(status="done", file=result, finished=time.monotonic())
+    except (OSError, ValueError, KeyError, TypeError) as error:
         with LOCK:
-            state.update(status="error", error=str(error).replace(key, "[숨김]"))
+            state.update(status="error", error=str(error).replace(key, "[숨김]"), finished=time.monotonic())
+
+
+def progress(state):
+    stages = state["stages"]
+    index = stages.index(state["stage"])
+    now = state.get("finished", time.monotonic())
+    label, expected = STAGES[state["stage"]]
+    remaining_stage = expected - (now - state["stage_started"])
+    remaining = max(0, remaining_stage) + sum(STAGES[stage][1] for stage in stages[index + 1:])
+    return {
+        "status": state["status"], "label": label, "step": index + 1, "steps": len(stages),
+        "elapsed": int(now - state["started"]),
+        "remaining": round(remaining) if state["status"] == "running" and remaining_stage > 0 else None,
+        **{name: state[name] for name in ("log", "error") if name in state},
+        **(video_info(state["file"]) if state["status"] == "done" else {}),
+    }
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -132,20 +191,23 @@ class Handler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/api/status":
             with LOCK:
-                busy = any(run["status"] == "running" for run in RUNS.values())
+                active = next((key for key, run in RUNS.items() if run["status"] == "running"), None)
             env_key = bool(os.environ.get("GEMINI_API_KEY"))
             saved = KEY_FILE.is_file()
+            latest = saved_video()
             return self.send_json(200, {"connected": True, "key": env_key or saved,
-                                        "envKey": env_key, "savedKey": saved, "busy": busy})
+                                        "envKey": env_key, "savedKey": saved, "busy": active is not None,
+                                        "activeRun": active, "latestVideo": video_info(latest) if latest else None})
         if match := re.fullmatch(r"/api/run/([a-f0-9]{16})", path):
             with LOCK:
                 state = RUNS.get(match[1])
-                response = {k: v for k, v in state.items() if k != "file"} if state else None
+                response = progress(state) if state else None
             return self.send_json(200 if response else 404, response or {"error": "제작 기록을 찾을 수 없습니다."})
         file = MEDIA.get(path)
         if match := re.fullmatch(r"/video/web-([a-f0-9]{16})\.mp4", path):
             with LOCK:
                 file = RUNS.get(match[1], {}).get("file")
+            file = file or saved_video(match[1])
         if not file or not file.is_file():
             return self.send_error(404)
         data = file.read_bytes()
@@ -156,9 +218,20 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if (not self.local_request() or self.path not in {"/api/run", "/api/key"}
+        if (not self.local_request()
                 or self.headers.get("Origin") != f"http://127.0.0.1:{self.server.server_port}"):
             return self.send_error(403)
+        if match := re.fullmatch(r"/api/open-folder/([a-f0-9]{16})", self.path):
+            file = saved_video(match[1])
+            if not file:
+                return self.send_json(404, {"error": "저장된 MP4를 찾을 수 없습니다."})
+            try:
+                os.startfile(file.parent)
+            except OSError:
+                return self.send_json(500, {"error": "탐색기를 열지 못했습니다. 표시된 경로를 사용하세요."})
+            return self.send_json(200, {"opened": True})
+        if self.path not in {"/api/run", "/api/key"}:
+            return self.send_error(404)
         try:
             length = int(self.headers.get("Content-Length", 0))
             limit = 2048 if self.path == "/api/key" else 30_000_000
@@ -199,7 +272,9 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             busy = any(run["status"] == "running" for run in RUNS.values())
             if not busy:
-                state = {"status": "running", "log": "작업을 준비하고 있습니다.\n"}
+                now = time.monotonic()
+                state = {"status": "running", "log": "", "stage": "prepare", "stages": list(STAGES),
+                         "started": now, "stage_started": now}
                 RUNS[token] = state
         if busy:
             return self.send_json(409, {"error": "이미 제작 중입니다. 현재 작업이 끝난 뒤 다시 실행하세요."})

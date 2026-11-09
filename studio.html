@@ -50,6 +50,10 @@ textarea{resize:vertical;min-height:41px;display:block}input[type=file]{font-siz
 .stage{display:flex;flex:1;min-height:285px;align-items:center;justify-content:center}
 video{height:min(43vh,400px);max-height:100%;max-width:100%;aspect-ratio:9/16;border:1px solid #757360;border-radius:13px;background:#171a16;box-shadow:0 12px 40px #151a15aa;object-fit:contain}
 .status{padding:9px 0 0;font-size:11px;color:#e7decb;min-height:29px}
+.production-progress{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:8px;background:#f5efe2}
+.production-progress p{margin:0;font-size:12px}
+.production-progress progress{width:100%;height:12px;accent-color:var(--moss);margin:6px 0}
+.production-progress small{color:var(--muted)}
 .photo-drop{border:1px dashed var(--line);border-radius:7px;padding:6px 8px}
 .photo-drop.dragging{border-color:var(--moss);background:#edf1e9}
 .photo-drop small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
@@ -57,7 +61,8 @@ pre{margin:4px 0 0;max-height:92px;overflow:auto;white-space:pre-wrap;overflow-w
 .download{color:#f3d499}.footer{font-size:10px;color:var(--muted);margin-top:11px;display:flex;justify-content:space-between;gap:12px}
 dialog{width:min(100% - 32px,1050px);border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:12px}
 dialog::backdrop{background:#252a23ba}
-.preview-tools{display:flex;gap:8px;margin-top:6px}
+.preview-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:6px}
+.saved-path{width:100%;margin-top:6px;color:#e7decb;font-size:11px;overflow-wrap:anywhere}
 .lookbook{margin-top:7px}
 .lookbook summary{cursor:pointer;width:max-content}
 .lookbook img{display:block;width:100%;max-height:55vh;object-fit:contain;margin-top:8px;border-radius:7px}
@@ -78,7 +83,7 @@ dialog::backdrop{background:#252a23ba}
   <header class="mast"><div class="brand"><span class="seal">O</span> OPPA STUDIO</div><div id="connection" class="badge">로컬 파일 모드</div></header>
   <div class="intro"><div><div class="eyebrow">THE SHORTS EDIT</div><h1>오빠로 젊어지는 채널</h1></div><p>오늘 입기 좋은 오빠 코디.</p></div>
   <div class="desk">
-    <form id="composer" class="panel">
+    <form id="composer" class="panel" novalidate>
       <div class="section"><h2><span class="index">01</span>호스트</h2></div>
       <div class="hosts" aria-label="호스트 선택">
         <button class="host" type="button" data-host="A" aria-pressed="true"><div class="portrait"><img src="characters/A.png" alt=""></div><span class="copy"><strong>한유나</strong>눈웃음과 장난기</span></button>
@@ -131,6 +136,11 @@ dialog::backdrop{background:#252a23ba}
         <div><small>월 예상 합계</small><output id="monthlyEstimate" class="estimate">9,000원</output></div>
       </div>
       <div class="actions"><button class="btn primary" id="create" type="submit">쇼츠 제작</button><button class="btn" id="export" type="button">상품 목록 저장</button></div>
+      <section id="productionProgress" class="production-progress" aria-label="쇼츠 제작 진행 상황" hidden>
+        <p id="productionMessage" role="status"></p>
+        <progress id="productionSteps" aria-label="완료한 제작 단계" hidden></progress>
+        <small id="productionTiming"></small>
+      </section>
       <p id="modeNote" class="notice">HTML 파일에서는 구성과 목록 저장이 가능합니다. 실제 제작은 Open Studio.cmd로 시작하세요.</p>
     </form>
     <section class="panel preview" aria-label="영상 미리보기">
@@ -138,7 +148,14 @@ dialog::backdrop{background:#252a23ba}
       <div class="stage"><video id="video" controls playsinline preload="metadata" aria-label="세로 쇼츠 미리보기"></video></div>
       <div class="status" id="status" role="status">첨부 영상으로 만든 15초 무음 샘플</div>
       <div class="preview-tools"><button id="openCover" class="btn" type="button">썸네일 편집</button></div>
-      <a id="download" class="download" hidden download="short.mp4">완성 MP4 저장 ↓</a>
+      <section id="savedVideo" hidden aria-label="저장된 완성 영상">
+        <div class="preview-tools">
+          <a id="openVideo" class="btn" target="_blank" rel="noopener">MP4 바로 열기</a>
+          <button id="openFolder" class="btn" type="button">저장 폴더 열기</button>
+          <a id="download" class="download" download="short.mp4">사본 다운로드 ↓</a>
+        </div>
+        <p class="saved-path">저장 위치: <code id="savedPath"></code></p>
+      </section>
       <pre id="log" hidden aria-label="제작 로그"></pre>
     </section>
   </div>
@@ -391,13 +408,25 @@ const data = () => ({id:"studio-product", host:selected, product:get("product").
   seconds:Number(get("seconds").value), veo:get("tier").value,
   ...(selected === "A" && get("footwear").value ? {footwear:get("footwear").value} : {})});
 function validate() {
-  if (!get("composer").reportValidity()) return false;
+  for (const [id, message] of [
+    ["product", "상품명을 입력하세요."],
+    ["facts", "상품 특징을 입력하세요."],
+    ["photos", "상품 사진을 한 장 이상 넣어 주세요."],
+  ]) {
+    const field = get(id);
+    if (id === "photos" ? !field.files.length : !field.value.trim()) {
+      showProduction(message);
+      field.focus();
+      return false;
+    }
+  }
   if (!/^https:\/\/link\.coupang\.com\/[a-zA-Z0-9][^\s]*$/i.test(get("link").value.trim())) {
-    get("status").textContent = "발급받은 link.coupang.com 파트너스 링크를 입력하세요.";
+    showProduction("발급받은 link.coupang.com 파트너스 링크를 입력하세요.");
+    get("link").focus();
     return false;
   }
   if (get("photos").files.length > 4) {
-    get("status").textContent = "상품 사진을 최대 4장까지 선택하세요.";
+    showProduction("상품 사진을 최대 4장까지 선택하세요.");
     return false;
   }
   return true;
@@ -412,9 +441,14 @@ get("export").onclick = () => {
   get("status").textContent = "상품 목록을 저장했습니다. CLI에서 사용할 때는 선택한 사진을 JSON 옆에 두세요.";
 };
 async function request(path, options) {
-  const response = await fetch(path, options);
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.error || "요청을 완료하지 못했습니다.");
+  let response;
+  try {
+    response = await fetch(path, {signal:AbortSignal.timeout(15000), ...options});
+  } catch {
+    throw new Error("제작기에 연결할 수 없습니다. OPPA STUDIO 실행 창을 확인하세요.");
+  }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "제작기 요청을 완료하지 못했습니다.");
   return payload;
 }
 let envKey = false;
@@ -447,6 +481,24 @@ async function changeKey(remove) {
 }
 get("saveKey").onclick = () => changeKey(false);
 get("removeKey").onclick = () => changeKey(true);
+function showSavedVideo(state, message) {
+  preview.src = state.video;
+  coverBackgroundReady = false;
+  get("previewType").textContent = "FINAL EDIT";
+  get("status").textContent = message;
+  get("openVideo").href = state.video;
+  get("download").href = state.video;
+  get("savedPath").textContent = state.filePath;
+  get("savedVideo").hidden = false;
+  get("openFolder").onclick = async () => {
+    try {
+      await request("/api/open-folder/" + state.id, {method:"POST"});
+      get("status").textContent = "저장 폴더를 열었습니다.";
+    } catch (error) {
+      get("status").textContent = error.message;
+    }
+  };
+}
 if (!offline) request("/api/status").then(state => {
   connected = state.connected;
   envKey = state.envKey;
@@ -455,7 +507,12 @@ if (!offline) request("/api/status").then(state => {
   get("connection").textContent = "로컬 제작기 연결됨";
   get("connection").classList.add("live");
   get("modeNote").textContent = "첫 제작 시 선택한 호스트의 기준 이미지를 생성합니다. 이후 같은 이미지를 재사용합니다.";
-}).catch(() => {});
+  if (state.latestVideo) showSavedVideo(state.latestVideo, "최근 저장된 완성 MP4");
+  if (state.activeRun) followRun(state.activeRun);
+}).catch(error => {
+  get("connection").textContent = "제작기 연결 실패";
+  get("modeNote").textContent = error.message;
+});
 function encode(file) {
   return new Promise((resolve,reject) => {
     const reader = new FileReader();
@@ -464,48 +521,89 @@ function encode(file) {
     reader.readAsDataURL(file);
   });
 }
+function showProduction(message, state) {
+  get("productionProgress").hidden = false;
+  const line = get("productionMessage");
+  if (line.textContent !== message) line.textContent = message;
+  const bar = get("productionSteps");
+  bar.hidden = !state;
+  if (state) {
+    bar.max = state.steps;
+    bar.value = state.status === "done" ? state.steps : state.step - 1;
+  }
+  const clock = seconds => `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
+  let timing = state ? `경과 ${clock(state.elapsed)}` : "";
+  if (state?.status === "running") {
+    timing += state.remaining === null ? " · 예상 시간 초과, 응답 대기 중"
+      : ` · 예상 남은 시간 약 ${clock(state.remaining)}`;
+  }
+  get("productionTiming").textContent = timing;
+}
+
+async function followRun(id) {
+  get("create").disabled = true;
+  get("create").textContent = "제작 중…";
+  try {
+    let state;
+    do {
+      state = await request("/api/run/" + id);
+      get("log").textContent = state.log;
+      get("log").hidden = !state.log;
+      get("log").scrollTop = get("log").scrollHeight;
+      if (state.status === "running") {
+        showProduction(`${state.step}/${state.steps}단계 · ${state.label}`, state);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } while (state.status === "running");
+    if (state.status === "error") {
+      const lastLog = state.log?.trim().split("\n").at(-1);
+      showProduction(`제작 실패 · ${state.label}. ${lastLog?.slice(0, 220) || state.error}`, state);
+      return;
+    }
+    showSavedVideo(state, "쇼츠 제작 완료");
+    showProduction("쇼츠 제작 완료", state);
+  } catch(error) {
+    showProduction(error.message || "제작 진행 상태를 확인하지 못했습니다.");
+  } finally {
+    get("create").disabled = false;
+    get("create").textContent = "쇼츠 제작";
+  }
+}
 get("composer").onsubmit = async event => {
   event.preventDefault();
+  if (get("create").disabled) return;
   if (!connected) {
-    get("status").textContent = "프로젝트 폴더의 Open Studio.cmd를 더블클릭하면 웹 제작기가 연결됩니다.";
+    showProduction("바탕화면의 OPPA STUDIO 아이콘으로 제작기를 실행한 뒤 다시 시도하세요.");
     return;
   }
   if (!validate()) return;
   const key = get("key").value.trim();
-  if (needsKey && !key) { get("key").focus(); get("status").textContent = "Gemini API 키를 입력하세요."; return; }
+  if (needsKey && !key) {
+    showProduction("Gemini API 키를 입력하거나 저장해 주세요.");
+    get("key").focus();
+    return;
+  }
   const files = Array.from(get("photos").files);
   if (files.reduce((total,file) => total + file.size, 0) > 21000000) {
-    get("status").textContent = "상품 사진의 합계 용량을 21MB 이하로 줄여 주세요."; return;
+    showProduction("상품 사진의 합계 용량을 21MB 이하로 줄여 주세요.");
+    return;
   }
   const job = data();
   get("create").disabled = true;
-  get("status").textContent = "제작을 시작합니다…";
-  get("download").hidden = true;
+  get("create").textContent = "제작 중…";
+  showProduction("상품 사진을 준비하고 있습니다…");
   get("log").hidden = true;
   try {
     const photos = await Promise.all(files.map(encode));
     const {id} = await request("/api/run", {method:"POST", headers:{"Content-Type":"application/json"},
       body:JSON.stringify({key,job,photos})});
     get("key").value = "";
-    let state;
-    do {
-      await new Promise(resolve => setTimeout(resolve, 1700));
-      state = await request("/api/run/" + id);
-      get("log").textContent = state.log;
-      get("log").hidden = !state.log;
-      get("log").scrollTop = get("log").scrollHeight;
-    } while (state.status === "running");
-    if (state.status === "error") throw new Error(state.error);
-    preview.src = state.video;
-    coverBackgroundReady = false;
-    get("previewType").textContent = "FINAL EDIT";
-    get("status").textContent = "쇼츠 제작 완료";
-    get("download").href = state.video;
-    get("download").hidden = false;
+    await followRun(id);
   } catch(error) {
-    get("status").textContent = error.message || "제작을 완료하지 못했습니다.";
+    showProduction(error.message || "제작을 시작하지 못했습니다.");
   } finally {
     get("create").disabled = false;
+    get("create").textContent = "쇼츠 제작";
   }
 };
 </script>
