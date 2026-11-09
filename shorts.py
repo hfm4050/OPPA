@@ -48,7 +48,7 @@ HOSTS = {
         "서혜원",
         "39 years old, 170 cm, 58 kg, tall long-limbed build, defined oval face, arched brows, sharp dark eyes, "
         "mole under her left eye, glossy straight shoulder-length black hair with off-center part, "
-        "fitted black suit blazer over a burgundy mock-neck knit, tailored knee-length black pencil skirt, "
+        "fitted black suit blazer over a burgundy mock-neck knit, tailored short above-knee black pencil skirt, "
         "black diamond-mesh fishnet tights, and black pointed pumps",
         "Aoede",
         "섹시하고 응큼한 호스트. 여유로운 능청과 은근한 플러팅. 예시: 오빠, 이렇게 입고 오면 저 먼저 약속 잡아요.",
