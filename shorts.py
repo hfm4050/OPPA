@@ -20,6 +20,7 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 ROOT = Path(__file__).resolve().parent
 DATA_ROOT = Path(os.environ.get("OPPA_STUDIO_DATA", ROOT)).resolve()
+RENDER_VERSION = 2
 API = "https://generativelanguage.googleapis.com"
 
 
@@ -387,8 +388,10 @@ def render(directory, job, intro, script, demo):
     captions(directory, hook, lines, starts, lengths, end, demo, HOSTS[job["host"]].name)
     encoder = ["-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p"]
     scale = "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280,setsar=1"
+    # Work in normalized 720p coordinates and leave the rest of the frame intact.
+    logo_filter = "delogo=x=569:y=1128:w=66:h=66" if demo else "delogo=x=563:y=1123:w=155:h=155"
     preview_mask = ",drawbox=x=0:y=0:w=iw:h=190:color=0x211D19:t=fill" if demo else ""
-    run_ffmpeg(directory, "-i", intro, "-vf", f"{scale}{preview_mask},fps=30,tpad=stop_mode=clone:stop_duration=4",
+    run_ffmpeg(directory, "-i", intro, "-vf", f"{scale},{logo_filter}{preview_mask},fps=30,tpad=stop_mode=clone:stop_duration=4",
                "-t", 4, "-an", *encoder, "cut0.mp4")
     detail_frames = (end - 4) * 30
     cuts = ["cut0.mp4"]
@@ -420,7 +423,7 @@ def deliver(directory, job, script, demo):
     write_json(directory / "result.json", {
         "title": title, "product": product, "description": description, "affiliate_url": link, "host": job["host"],
         "host_name": HOSTS[job["host"]].name, "seconds": job["seconds"], "veo_usd_for_one_success": price,
-        "demo": demo, "video": "short.mp4",
+        "demo": demo, "video": "short.mp4", "render_version": RENDER_VERSION,
     })
     return price
 
@@ -441,7 +444,9 @@ def produce(job, client, demo, reference):
     work = out / signature
     work.mkdir(exist_ok=True)
     if (work / "result.json").exists() and (work / "short.mp4").exists():
-        return work, read_json(work / "result.json")["veo_usd_for_one_success"]
+        result = read_json(work / "result.json")
+        if result.get("render_version") == RENDER_VERSION:
+            return work, result["veo_usd_for_one_success"]
     script_path = work / "script.json"
     if script_path.exists():
         script = read_json(script_path)
