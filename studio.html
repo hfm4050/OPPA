@@ -56,7 +56,17 @@ video{height:min(43vh,400px);max-height:100%;max-width:100%;aspect-ratio:9/16;bo
 pre{margin:4px 0 0;max-height:92px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 Consolas,monospace;color:#dbbc83}
 .download{color:#f3d499}.footer{font-size:10px;color:var(--muted);margin-top:11px;display:flex;justify-content:space-between;gap:12px}
 dialog{width:min(100% - 32px,1050px);border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:12px}
-dialog::backdrop{background:#252a23ba}dialog img{display:block;width:100%;margin-top:8px;border-radius:7px}
+dialog::backdrop{background:#252a23ba}
+.preview-tools{display:flex;gap:8px;margin-top:6px}
+.lookbook{margin-top:7px}
+.lookbook summary{cursor:pointer;width:max-content}
+.lookbook img{display:block;width:100%;max-height:55vh;object-fit:contain;margin-top:8px;border-radius:7px}
+.cover-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:12px}
+.cover-stage{display:grid;place-items:center;background:#292e28;border-radius:10px;padding:10px}
+#coverCanvas{display:block;width:min(100%,31.5vh,270px);height:auto;touch-action:none;cursor:move}
+.cover-controls{align-content:start}
+.cover-controls input[type=checkbox]{width:auto;min-height:0;margin:0 4px 0 0;accent-color:var(--moss)}
+@media(max-width:560px){.cover-grid{grid-template-columns:1fr}#coverCanvas{width:min(100%,19.125vh)}}
 @media(max-width:850px){.shell{padding:0 20px 20px}.desk{grid-template-columns:minmax(0,1.45fr) minmax(240px,1fr)}.panel{padding:15px}.intro p{display:none}}
 @media(max-width:640px){.desk{grid-template-columns:1fr}.shell{padding:0 13px 15px}.intro{margin:18px 0}.portrait{height:100px}.stage{min-height:0}video{height:48vh}.fields{grid-template-columns:1fr}.footer{flex-wrap:wrap}}
 </style>
@@ -67,12 +77,17 @@ dialog::backdrop{background:#252a23ba}dialog img{display:block;width:100%;margin
   <div class="intro"><div><div class="eyebrow">THE SHORTS EDIT</div><h1>Style Studio</h1></div><p>중년 남성의 오늘 코디를, 한 편의 쇼츠로.</p></div>
   <div class="desk">
     <form id="composer" class="panel">
-      <div class="section"><h2><span class="index">01</span>호스트</h2><button id="lookbook" class="plain" type="button">캐릭터 룩북 보기 ↗</button></div>
+      <div class="section"><h2><span class="index">01</span>호스트</h2></div>
       <div class="hosts" aria-label="호스트 선택">
         <button class="host" type="button" data-host="A" aria-pressed="true"><div class="portrait"><img src="characters/A.png" alt=""></div><span class="copy"><strong>한유나</strong>눈웃음과 장난기</span></button>
         <button class="host" type="button" data-host="B" aria-pressed="false"><div class="portrait"><img src="characters/B.png" alt=""></div><span class="copy"><strong>서혜원</strong>여유로운 플러팅</span></button>
         <button class="host" type="button" data-host="C" aria-pressed="false"><div class="portrait"><img src="characters/C.png" alt=""></div><span class="copy"><strong>윤서하</strong>청순하고 다정한 말투</span></button>
       </div>
+      <details class="lookbook">
+        <summary class="plain">캐릭터 룩북 보기</summary>
+        <img id="lookbookImage" src="characters/A.png" alt="한유나 얼굴과 전신 착장" loading="lazy">
+        <a id="lookbookLink" class="plain" href="characters/A.png">원본 이미지 열기 ↗</a>
+      </details>
       <div class="divider"></div>
       <div class="section"><h2><span class="index">02</span>상품과 영상 설정</h2><span class="eyebrow">9:16 · 720P</span></div>
       <div class="fields">
@@ -106,13 +121,32 @@ dialog::backdrop{background:#252a23ba}dialog img{display:block;width:100%;margin
       <div class="section"><h2><span class="index">03</span>미리보기</h2><span id="previewType" class="eyebrow">DEMO EDIT</span></div>
       <div class="stage"><video id="video" controls playsinline preload="metadata" aria-label="세로 쇼츠 미리보기"></video></div>
       <div class="status" id="status" role="status">첨부 영상으로 만든 15초 무음 샘플</div>
+      <div class="preview-tools"><button id="openCover" class="btn" type="button">썸네일 편집</button></div>
       <a id="download" class="download" hidden download="short.mp4">완성 MP4 저장 ↓</a>
       <pre id="log" hidden aria-label="제작 로그"></pre>
     </section>
   </div>
   <footer class="footer"><span>OPPA STUDIO / GEMINI + VEO</span><span>Veo 4초 1회 성공 기준. 대본·음성·최초 호스트 이미지 비용 별도. 기본 환율은 계산 예시입니다.</span></footer>
 </main>
-<dialog id="sheetDialog"><form method="dialog"><button class="btn">닫기</button></form><img id="sheet" alt="선택한 호스트의 얼굴과 전신 착장 룩북"></dialog>
+<dialog id="coverDialog" aria-labelledby="coverHeading">
+  <div class="section"><h2 id="coverHeading">쇼츠 썸네일 편집</h2><form method="dialog"><button class="btn">닫기</button></form></div>
+  <div class="cover-grid">
+    <div class="cover-stage"><canvas id="coverCanvas" width="720" height="1280" aria-label="썸네일 미리보기"></canvas></div>
+    <div class="fields cover-controls">
+      <div class="wide actions"><button id="coverFrame" class="btn" type="button">현재 영상 프레임</button><button id="coverProduct" class="btn" type="button">상품 사진 사용</button></div>
+      <label class="wide">배경 이미지 선택<input id="coverFile" type="file" accept="image/png,image/jpeg,image/webp"></label>
+      <label class="wide">썸네일 문구<textarea id="coverText" rows="2" maxlength="90" placeholder="줄바꿈으로 문구를 나눌 수 있습니다."></textarea></label>
+      <label>글꼴<select id="coverFont"><option value="Malgun Gothic">맑은 고딕</option><option value="Gulim">굴림</option><option value="Batang">바탕</option></select></label>
+      <label>스타일<select id="coverStyle"><option value="outline">굵은 외곽선</option><option value="shadow">그림자</option><option value="clean">깔끔한 글씨</option></select></label>
+      <label>글자 크기<input id="coverSize" type="range" min="28" max="108" value="64"></label>
+      <label>글자 색<input id="coverColor" type="color" value="#ffffff"></label>
+      <label>텍스트 위치<select id="coverPosition"><option value=".19">위</option><option value=".5">가운데</option><option value=".79" selected>아래</option></select></label>
+      <label><input id="coverBold" type="checkbox" checked>굵게</label>
+      <p id="coverNote" class="notice wide" role="status">영상에서 원하는 위치에 멈춘 뒤 편집을 열거나 배경 사진을 선택하세요. 문구를 끌어 위치를 조정할 수 있습니다.</p>
+      <button id="saveCover" class="btn primary wide" type="button">썸네일 JPG 저장</button>
+    </div>
+  </div>
+</dialog>
 <script>
 const get = id => document.getElementById(id);
 const offline = location.protocol === "file:";
@@ -174,11 +208,143 @@ document.addEventListener("paste", event => {
 });
 document.querySelectorAll(".host").forEach(button => button.onclick = () => {
   selected = button.dataset.host;
+  const imagePath = "characters/" + selected + ".png";
+  get("lookbookImage").src = imagePath;
+  get("lookbookImage").alt = button.querySelector("strong").textContent + " 얼굴과 전신 착장";
+  get("lookbookLink").href = imagePath;
   document.querySelectorAll(".host").forEach(item => item.setAttribute("aria-pressed", item === button));
 });
-get("lookbook").onclick = () => {
-  get("sheet").src = "characters/" + selected + ".png";
-  get("sheetDialog").showModal();
+const cover = get("coverCanvas");
+const coverContext = cover.getContext("2d");
+const backdrop = document.createElement("canvas");
+backdrop.width = cover.width;
+backdrop.height = cover.height;
+const backdropContext = backdrop.getContext("2d");
+let coverBackgroundReady = false;
+let coverPosition = {x:.5, y:.79};
+let coverPointer = null;
+
+function setCoverBackground(source, width, height) {
+  const scale = Math.max(cover.width / width, cover.height / height);
+  const w = width * scale, h = height * scale;
+  backdropContext.drawImage(source, (cover.width - w) / 2, (cover.height - h) / 2, w, h);
+  coverBackgroundReady = true;
+  drawCover();
+}
+
+function drawCover() {
+  const ctx = coverContext;
+  ctx.fillStyle = "#292e28";
+  ctx.fillRect(0, 0, cover.width, cover.height);
+  if (coverBackgroundReady) ctx.drawImage(backdrop, 0, 0);
+  const size = Number(get("coverSize").value);
+  ctx.save();
+  ctx.font = `${get("coverBold").checked ? 700 : 400} ${size}px "${get("coverFont").value}", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  ctx.fillStyle = get("coverColor").value;
+  ctx.strokeStyle = "#171717";
+  ctx.lineWidth = Math.max(3, size * .13);
+  const style = get("coverStyle").value;
+  if (style === "shadow") {
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 5;
+  }
+  const lines = get("coverText").value.trim().split("\n").slice(0, 4);
+  const x = coverPosition.x * cover.width;
+  const y = coverPosition.y * cover.height;
+  lines.forEach((line, index) => {
+    const lineY = y + (index - (lines.length - 1) / 2) * size * 1.18;
+    const maxWidth = Math.min(x, cover.width - x) * 2 - 28;
+    if (style === "outline") ctx.strokeText(line, x, lineY, maxWidth);
+    ctx.fillText(line, x, lineY, maxWidth);
+  });
+  ctx.restore();
+}
+
+function captureCoverFrame() {
+  if (offline || preview.readyState < 2 || preview.seeking) return false;
+  preview.pause();
+  setCoverBackground(preview, preview.videoWidth, preview.videoHeight);
+  return true;
+}
+
+function coverFromFile(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const photo = new Image();
+  photo.onload = () => {
+    setCoverBackground(photo, photo.naturalWidth, photo.naturalHeight);
+    get("coverNote").textContent = "배경 사진을 적용했습니다. 문구를 끌어 위치를 조정할 수 있습니다.";
+    URL.revokeObjectURL(url);
+  };
+  photo.onerror = () => {
+    get("coverNote").textContent = "이 사진을 열 수 없습니다. 다른 이미지 파일을 선택하세요.";
+    URL.revokeObjectURL(url);
+  };
+  photo.src = url;
+}
+
+get("openCover").onclick = () => {
+  if (!get("coverText").value.trim()) get("coverText").value = get("product").value.trim() || "오빠, 오늘은 이 코디";
+  get("coverDialog").showModal();
+  if (!coverBackgroundReady) captureCoverFrame();
+  drawCover();
+};
+get("coverFrame").onclick = () => {
+  get("coverNote").textContent = captureCoverFrame()
+    ? "현재 프레임을 적용했습니다."
+    : "영상 프레임은 Open Studio.cmd로 연 화면에서 사용하세요. 영상 로딩 후 다시 시도할 수 있습니다.";
+};
+get("coverProduct").onclick = () => {
+  const file = photoInput.files[0];
+  if (file) coverFromFile(file);
+  else get("coverNote").textContent = "먼저 상품 사진을 넣거나 배경 이미지 파일을 선택하세요.";
+};
+get("coverFile").onchange = event => coverFromFile(event.target.files[0]);
+for (const id of ["coverText", "coverFont", "coverStyle", "coverSize", "coverColor", "coverBold"]) {
+  get(id).oninput = drawCover;
+}
+get("coverPosition").onchange = event => {
+  coverPosition = {x:.5, y:Number(event.target.value)};
+  drawCover();
+};
+cover.onpointerdown = event => {
+  if (coverPointer !== null) return;
+  const rect = cover.getBoundingClientRect();
+  coverPointer = {
+    id:event.pointerId,
+    x:coverPosition.x - (event.clientX - rect.left) / rect.width,
+    y:coverPosition.y - (event.clientY - rect.top) / rect.height,
+  };
+  cover.setPointerCapture(event.pointerId);
+};
+cover.onpointermove = event => {
+  if (coverPointer?.id !== event.pointerId) return;
+  const rect = cover.getBoundingClientRect();
+  coverPosition = {
+    x:Math.max(.18, Math.min(.82, coverPointer.x + (event.clientX - rect.left) / rect.width)),
+    y:Math.max(.18, Math.min(.82, coverPointer.y + (event.clientY - rect.top) / rect.height)),
+  };
+  drawCover();
+};
+cover.onlostpointercapture = () => { coverPointer = null; };
+get("saveCover").onclick = () => {
+  if (!coverBackgroundReady) {
+    get("coverNote").textContent = "먼저 영상 프레임이나 배경 사진을 적용하세요.";
+    return;
+  }
+  cover.toBlob(blob => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "oppa-thumbnail.jpg";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }, "image/jpeg", .94);
 };
 get("seconds").oninput = () => get("lengthText").value = get("seconds").value + "초";
 function updateCosts() {
@@ -281,6 +447,7 @@ get("composer").onsubmit = async event => {
     } while (state.status === "running");
     if (state.status === "error") throw new Error(state.error);
     preview.src = state.video;
+    coverBackgroundReady = false;
     get("previewType").textContent = "FINAL EDIT";
     get("status").textContent = "쇼츠 제작 완료";
     get("download").href = state.video;
