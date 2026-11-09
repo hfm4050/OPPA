@@ -35,11 +35,11 @@ class Host:
 HOSTS = {
     "A": Host(
         "한유나",
-        "32 years old, 162 cm, 51 kg, petite athletic build, heart-shaped face, bright warm brown almond eyes, "
+        "32 years old, 168 cm, 51 kg, slender athletic build, heart-shaped face, bright warm brown almond eyes, "
         "fresh peach blush and a natural coral lip, "
         "one subtle cheek dimple, long chestnut-brown loose waves with wispy side fringe, "
         "close-fitting butter-yellow short-sleeve rib knit, high-waisted fitted short black mini skirt "
-        "with a small front slit, and black pointed stiletto pumps",
+        "with a small front slit, and white low-top leather court sneakers",
         "Kore",
         "섹시하지만 귀여운 호스트. 밝은 눈웃음과 장난기. 예시: 오빠, 오늘 이 조합 반칙인데요?",
         "밝고 경쾌한 한국어. 눈웃음이 들리는 듯한 친근한 장난기",
