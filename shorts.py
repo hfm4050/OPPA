@@ -70,6 +70,19 @@ VEO = {
     "fast": ("veo-3.1-fast-generate-preview", 0.10),
     "standard": ("veo-3.1-generate-preview", 0.40),
 }
+INDOOR_LOOKS = {"barefoot": "barefoot", "socks": "plain white ankle socks without shoes"}
+
+
+def host_image(host, footwear=None):
+    name = f"{host}-{footwear}" if footwear else host
+    return DATA_ROOT / "hosts" / f"{name}.png"
+
+
+def check_footwear(host, footwear):
+    if footwear is not None and (host != "A" or footwear not in INDOOR_LOOKS):
+        raise ValueError("맨발과 양말 착장은 한유나에서만 선택할 수 있습니다.")
+
+
 DISCLOSURE = "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다."
 
 
@@ -133,22 +146,34 @@ class Gemini:
             raise ValueError(f"{model}: 사용 가능한 생성 결과가 없습니다.")
         return parts
 
-    def portrait(self, host):
+    def portrait(self, host, footwear=None):
         profile = HOSTS[host]
         reference = ROOT / "characters" / f"{host}.png"
+        look = profile.look
+        outfit = "first full-body outfit"
+        stance = (
+            "Pose her at a natural three-quarter side angle, face turned toward camera, "
+            "so the jeans' waist-to-hip silhouette is visible in the full-length frame. "
+            if host == "A" else ""
+        )
+        if footwear:
+            reference = ROOT / "characters" / "A-indoor.png"
+            look = profile.look.replace("white low-top leather court sneakers", INDOOR_LOOKS[footwear])
+            outfit = "left full-body outfit" if footwear == "barefoot" else "right full-body outfit"
         art_direction = ""
         if reference.is_file():
             art_direction = (
                 "The attached sheet is the identity reference. Preserve the woman's face, hair, body and "
-                "first full-body outfit. Show a single live-action scene without the sheet layout or text. "
+                f"{outfit}. Show a single live-action scene without the sheet layout or text. "
             )
         parts = self.content("gemini-3.1-flash-image", (
             art_direction +
             f"Photorealistic vertical Korean boutique fashion reel. Foreground: fictional adult Korean woman "
-            f"{profile.name}, {profile.look}, holding a small orange styling pointer. "
+            f"{profile.name}, {look}, holding a small orange styling pointer. "
             "Beside her is a handsome Korean man age 55 in a plain cream mock neck and charcoal trousers. "
             "She introduces middle-aged men's styling. Eye-level full-length shot, warm wood showroom, soft lighting. "
-            "Keep both faces clearly visible and include the woman's shoes. Candid editorial look, no text or logos."
+            "Keep both faces clearly visible and frame the woman head to toe. "
+            f"{stance}Candid editorial look, no text or logos."
         ), {"responseModalities": ["IMAGE"], "responseFormat": {
             "image": {"aspectRatio": "9:16", "imageSize": "1K"}
         }}, version="v1", reference=reference if reference.is_file() else None)
@@ -265,6 +290,8 @@ def normalize(job, base, index):
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,47}", key):
         raise ValueError("id는 영문·숫자로 시작하고 영문·숫자·밑줄·하이픈을 사용하세요.")
     host = job.get("host", "ABC"[index % 3])
+    footwear = job.get("footwear")
+    check_footwear(host, footwear)
     seconds = job.get("seconds", 15)
     tier = job.get("veo", "lite")
     if host not in HOSTS or type(seconds) is not int or not 10 <= seconds <= 20 or tier not in VEO:
@@ -284,6 +311,7 @@ def normalize(job, base, index):
         "id": key, "host": host, "seconds": seconds, "veo": tier, "affiliate_url": link,
         "images": images, "product": clean(job["product"], 55), "facts": clean(job["facts"], 500),
         "script": job.get("script"),
+        **({"footwear": footwear} if footwear else {}),
     }
 
 
@@ -396,7 +424,7 @@ def deliver(directory, job, script, demo):
 def produce(job, client, demo, reference):
     out = DATA_ROOT / "output" / ("preview" if demo else "jobs") / job["id"]
     out.mkdir(parents=True, exist_ok=True)
-    portrait = DATA_ROOT / "hosts" / f"{job['host']}.png"
+    portrait = host_image(job["host"], job.get("footwear"))
     files = job["images"] + [reference if demo else portrait]
     digests = []
     for file in files:
@@ -463,6 +491,7 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     hosts = commands.add_parser("hosts", help="고정 호스트 이미지 최초 생성")
     hosts.add_argument("host", choices=["A", "B", "C", "all"], default="all", nargs="?")
+    hosts.add_argument("--footwear", choices=INDOOR_LOOKS)
     build = commands.add_parser("build", help="상품 목록을 영상으로 제작")
     build.add_argument("manifest", type=Path)
     build.add_argument("--preview", type=Path, metavar="REFERENCE_MP4", help="참고 영상으로 무료 편집 미리보기")
@@ -471,18 +500,21 @@ def main():
     if not all(shutil.which(tool) for tool in ("ffmpeg", "ffprobe")):
         raise ValueError("FFmpeg와 FFprobe를 PATH에 추가하세요.")
     if args.command == "hosts":
+        check_footwear(args.host, args.footwear)
         folder = DATA_ROOT / "hosts"
         folder.mkdir(exist_ok=True)
         selected = HOSTS if args.host == "all" else [args.host]
-        missing = [host for host in selected if not (folder / f"{host}.png").exists()]
+        missing = [host for host in selected if not host_image(host, args.footwear).exists()]
         if missing:
             client = Gemini()
             for host in missing:
-                source = folder / f"{host}.source"
+                target = host_image(host, args.footwear)
+                source = target.with_suffix(".source")
+                temp = target.with_suffix(".tmp.png")
                 if not source.exists():
-                    atomic(source, client.portrait(host))
-                run_ffmpeg(folder, "-i", source.name, "-frames:v", 1, f"{host}.tmp.png")
-                (folder / f"{host}.tmp.png").replace(folder / f"{host}.png")
+                    atomic(source, client.portrait(host, args.footwear))
+                run_ffmpeg(folder, "-i", source.name, "-frames:v", 1, temp.name)
+                temp.replace(target)
                 source.unlink()
                 print(f"호스트 {host} 준비 완료")
         else:
@@ -510,8 +542,10 @@ def main():
         for job in jobs:
             if job["affiliate_url"] == "https://link.coupang.com/REPLACE-ME":
                 raise ValueError(f"{job['id']}: 예제 링크를 발급받은 링크로 교체하세요.")
-            if not (DATA_ROOT / "hosts" / f"{job['host']}.png").is_file():
-                raise ValueError(f"호스트 {job['host']} 이미지가 필요합니다. python shorts.py hosts {job['host']}")
+            footwear = job.get("footwear")
+            if not host_image(job["host"], footwear).is_file():
+                flag = f" --footwear {footwear}" if footwear else ""
+                raise ValueError(f"호스트 이미지가 필요합니다. python shorts.py hosts {job['host']}{flag}")
     client = None if demo else Gemini()
     results = []
     failed = 0

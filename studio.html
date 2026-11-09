@@ -61,6 +61,8 @@ dialog::backdrop{background:#252a23ba}
 .lookbook{margin-top:7px}
 .lookbook summary{cursor:pointer;width:max-content}
 .lookbook img{display:block;width:100%;max-height:55vh;object-fit:contain;margin-top:8px;border-radius:7px}
+#footwearField{margin-top:9px}
+#footwearField[hidden]{display:none}
 .cover-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:12px}
 .cover-stage{display:grid;place-items:center;background:#292e28;border-radius:10px;padding:10px}
 #coverCanvas{display:block;width:min(100%,31.5vh,270px);height:auto;touch-action:none;cursor:move}
@@ -87,7 +89,14 @@ dialog::backdrop{background:#252a23ba}
         <summary class="plain">캐릭터 룩북 보기</summary>
         <img id="lookbookImage" src="characters/A.png" alt="한유나 얼굴과 전신 착장" loading="lazy">
         <a id="lookbookLink" class="plain" href="characters/A.png">원본 이미지 열기 ↗</a>
+        <details id="indoorLookbook" class="lookbook">
+          <summary class="plain">맨발·양말 룩북</summary>
+          <img src="characters/A-indoor.png" alt="한유나의 맨발과 흰색 발목 양말 전신 착장" loading="lazy">
+        </details>
       </details>
+      <label id="footwearField">한유나 신발 착장
+        <select id="footwear"><option value="">흰색 스니커즈</option><option value="barefoot">맨발</option><option value="socks">흰색 발목 양말만</option></select>
+      </label>
       <div class="divider"></div>
       <div class="section"><h2><span class="index">02</span>상품과 영상 설정</h2><span class="eyebrow">9:16 · 720P</span></div>
       <div class="fields">
@@ -212,6 +221,8 @@ document.querySelectorAll(".host").forEach(button => button.onclick = () => {
   get("lookbookImage").src = imagePath;
   get("lookbookImage").alt = button.querySelector("strong").textContent + " 얼굴과 전신 착장";
   get("lookbookLink").href = imagePath;
+  get("indoorLookbook").hidden = selected !== "A";
+  get("footwearField").hidden = selected !== "A";
   document.querySelectorAll(".host").forEach(item => item.setAttribute("aria-pressed", item === button));
 });
 const cover = get("coverCanvas");
@@ -370,7 +381,8 @@ get("exchangeRate").oninput = updateCosts;
 get("monthlyCount").oninput = updateCosts;
 const data = () => ({id:"studio-product", host:selected, product:get("product").value.trim(),
   facts:get("facts").value.trim(), affiliate_url:get("link").value.trim(),
-  seconds:Number(get("seconds").value), veo:get("tier").value});
+  seconds:Number(get("seconds").value), veo:get("tier").value,
+  ...(selected === "A" && get("footwear").value ? {footwear:get("footwear").value} : {})});
 function validate() {
   if (!get("composer").reportValidity()) return false;
   if (!/^https:\/\/link\.coupang\.com\/[a-zA-Z0-9][^\s]*$/i.test(get("link").value.trim())) {

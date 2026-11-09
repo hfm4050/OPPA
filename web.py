@@ -19,7 +19,7 @@ import shorts
 ROOT = Path(__file__).resolve().parent
 PREVIEW = ROOT / "demo/preview.mp4"
 MEDIA = {"/": ROOT / "studio.html", "/studio.html": ROOT / "studio.html",
-         "/preview.mp4": PREVIEW,
+         "/preview.mp4": PREVIEW, "/characters/A-indoor.png": ROOT / "characters/A-indoor.png",
          **{f"/characters/{host}.png": ROOT / "characters" / f"{host}.png" for host in shorts.HOSTS}}
 RUNS = {}
 LOCK = threading.Lock()
@@ -44,8 +44,10 @@ def run_job(state, job, key, photos):
         env = os.environ.copy()
         env["GEMINI_API_KEY"] = key
         commands = [["build", str(manifest)]]
-        if not (shorts.DATA_ROOT / "hosts" / f'{job["host"]}.png').is_file():
-            commands.insert(0, ["hosts", job["host"]])
+        footwear = job.get("footwear")
+        if not shorts.host_image(job["host"], footwear).is_file():
+            flags = ["--footwear", footwear] if footwear else []
+            commands.insert(0, ["hosts", job["host"], *flags])
         for command in commands:
             with subprocess.Popen(
                 [sys.executable, "-X", "utf8", "-u", str(ROOT / "shorts.py"), *command],
@@ -124,6 +126,10 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("상품 사진을 1~4장 선택하세요.")
             job = {name: payload["job"][name] for name in
                    ("host", "seconds", "veo", "product", "facts", "affiliate_url")}
+            footwear = payload["job"].get("footwear")
+            shorts.check_footwear(job["host"], footwear)
+            if footwear:
+                job["footwear"] = footwear
         except (ValueError, KeyError, TypeError, AttributeError) as error:
             return self.send_json(400, {"error": str(error)})
         token = uuid.uuid4().hex[:16]
