@@ -38,7 +38,8 @@ HOSTS = {
         "32 years old, 162 cm, 51 kg, petite athletic build, heart-shaped face, bright warm brown almond eyes, "
         "fresh peach blush and a natural coral lip, "
         "one subtle cheek dimple, long chestnut-brown loose waves with wispy side fringe, "
-        "butter-yellow fitted cardigan over a white crew-neck tee, black A-line mini skirt and Mary Janes",
+        "close-fitting butter-yellow short-sleeve rib knit, high-waisted fitted short black mini skirt "
+        "with a small front slit, and black pointed stiletto pumps",
         "Kore",
         "섹시하지만 귀여운 호스트. 밝은 눈웃음과 장난기. 예시: 오빠, 오늘 이 조합 반칙인데요?",
         "밝고 경쾌한 한국어. 눈웃음이 들리는 듯한 친근한 장난기",
@@ -47,7 +48,8 @@ HOSTS = {
         "서혜원",
         "39 years old, 170 cm, 58 kg, tall long-limbed build, defined oval face, arched brows, sharp dark eyes, "
         "mole under her left eye, glossy straight shoulder-length black hair with off-center part, "
-        "burgundy fitted mock-neck knit, tailored black mini skirt and knee-high leather boots",
+        "close-fitting burgundy mock-neck knit, high-waisted fitted short black mini skirt "
+        "with a small front slit, and black pointed stiletto pumps",
         "Aoede",
         "섹시하고 응큼한 호스트. 여유로운 능청과 은근한 플러팅. 예시: 오빠, 이렇게 입고 오면 저 먼저 약속 잡아요.",
         "낮고 여유로운 한국어. 살짝 뜸을 들인 뒤 미소가 느껴지는 능청스러운 톤",
@@ -56,7 +58,8 @@ HOSTS = {
         "윤서하",
         "43 years old, 166 cm, 54 kg, slender balanced build, soft oval face, gently straight brows, "
         "clear dark eyes, chin-length deep-brown bob tucked behind one ear with a center part, "
-        "ivory fitted boat-neck knit, navy A-line mini skirt and loafers",
+        "close-fitting ivory boat-neck knit, high-waisted fitted short navy mini skirt "
+        "with a small front slit, and cream pointed stiletto pumps",
         "Leda",
         "섹시하지만 청순한 호스트. 차분하고 다정하게 옷을 골라 줌. 예시: 오빠, 이 색 입으니까 인상이 한결 부드러워요.",
         "부드럽고 또렷한 한국어. 가까운 사람에게 옷을 골라 주는 다정한 말투",
@@ -144,8 +147,8 @@ class Gemini:
             f"Photorealistic vertical Korean boutique fashion reel. Foreground: fictional adult Korean woman "
             f"{profile.name}, {profile.look}, holding a small orange styling pointer. "
             "Beside her is a handsome Korean man age 55 in a plain cream mock neck and charcoal trousers. "
-            "She introduces middle-aged men's styling. Eye-level medium shot, warm wood showroom, soft lighting. "
-            "Both faces clearly visible, candid editorial look, keep headroom, no text or logos."
+            "She introduces middle-aged men's styling. Eye-level full-length shot, warm wood showroom, soft lighting. "
+            "Keep both faces clearly visible and include the woman's shoes. Candid editorial look, no text or logos."
         ), {"responseModalities": ["IMAGE"], "responseFormat": {
             "image": {"aspectRatio": "9:16", "imageSize": "1K"}
         }}, version="v1", reference=reference if reference.is_file() else None)
