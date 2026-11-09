@@ -107,7 +107,14 @@ dialog::backdrop{background:#252a23ba}
           <label>상품 사진 · 1~4장<input id="photos" type="file" accept=".png,.jpg,.jpeg,.webp" multiple required></label>
           <small id="photoHint" aria-live="polite">여기에 끌어놓거나 Ctrl+V로 붙여넣기</small>
         </div>
-        <label id="keyLabel" hidden>Gemini API 키<input id="key" type="password" autocomplete="off" placeholder="이 작업에만 사용"></label>
+        <div id="keyPanel" hidden>
+          <label>Gemini API 키<input id="key" type="password" autocomplete="off" placeholder="키 입력 또는 저장된 키 사용"></label>
+          <div class="preview-tools">
+            <button id="saveKey" class="btn" type="button">키 저장</button>
+            <button id="removeKey" class="btn" type="button" hidden>저장 키 삭제</button>
+          </div>
+          <p id="keyNote" class="notice" role="status"></p>
+        </div>
       </div>
       <div class="controls">
         <label class="duration">길이 <output id="lengthText">15초</output><input id="seconds" type="range" min="10" max="20" value="15"></label>
@@ -410,10 +417,41 @@ async function request(path, options) {
   if (!response.ok) throw new Error(payload.error || "요청을 완료하지 못했습니다.");
   return payload;
 }
+let envKey = false;
+function updateKeyState(saved) {
+  needsKey = !envKey && !saved;
+  get("removeKey").hidden = !saved;
+  get("keyNote").textContent = envKey ? "Windows 환경 변수의 키를 사용 중입니다."
+    : saved ? "이 Windows 계정에 키가 저장되어 있습니다." : "키를 저장하면 다시 열어도 사용할 수 있습니다.";
+}
+async function changeKey(remove) {
+  const key = get("key").value.trim();
+  if (!remove && !key) {
+    get("key").focus();
+    get("keyNote").textContent = "저장할 Gemini API 키를 입력하세요.";
+    return;
+  }
+  get("saveKey").disabled = true;
+  get("removeKey").disabled = true;
+  try {
+    const state = await request("/api/key", {method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(remove ? {remove:true} : {key})});
+    get("key").value = "";
+    updateKeyState(state.savedKey);
+  } catch(error) {
+    get("keyNote").textContent = error.message;
+  } finally {
+    get("saveKey").disabled = false;
+    get("removeKey").disabled = false;
+  }
+}
+get("saveKey").onclick = () => changeKey(false);
+get("removeKey").onclick = () => changeKey(true);
 if (!offline) request("/api/status").then(state => {
   connected = state.connected;
-  needsKey = !state.key;
-  get("keyLabel").hidden = !needsKey;
+  envKey = state.envKey;
+  get("keyPanel").hidden = false;
+  updateKeyState(state.savedKey);
   get("connection").textContent = "로컬 제작기 연결됨";
   get("connection").classList.add("live");
   get("modeNote").textContent = "첫 제작 시 선택한 호스트의 기준 이미지를 생성합니다. 이후 같은 이미지를 재사용합니다.";

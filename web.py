@@ -1,11 +1,13 @@
 import argparse
 import base64
+import ctypes
 import json
 import mimetypes
 import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import uuid
 import webbrowser
@@ -23,6 +25,47 @@ MEDIA = {"/": ROOT / "studio.html", "/studio.html": ROOT / "studio.html",
          **{f"/characters/{host}.png": ROOT / "characters" / f"{host}.png" for host in shorts.HOSTS}}
 RUNS = {}
 LOCK = threading.Lock()
+KEY_FILE = shorts.DATA_ROOT / ".gemini-key.dpapi"
+
+
+def protect_key(value, *, decrypt=False):
+    class Blob(ctypes.Structure):
+        _fields_ = [("size", ctypes.c_ulong), ("data", ctypes.c_void_p)]
+
+    try:
+        raw = base64.b64decode(value, validate=True) if decrypt else value.encode("ascii")
+        buffer = ctypes.create_string_buffer(raw)
+        source = Blob(len(raw), ctypes.addressof(buffer))
+        target = Blob()
+        crypt = ctypes.WinDLL("crypt32", use_last_error=True)
+        transform = crypt.CryptUnprotectData if decrypt else crypt.CryptProtectData
+        transform.argtypes = [ctypes.POINTER(Blob), ctypes.c_void_p, ctypes.c_void_p,
+                              ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(Blob)]
+        transform.restype = ctypes.c_int
+        if not transform(ctypes.byref(source), None, None, None, None, 1, ctypes.byref(target)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        try:
+            output = ctypes.string_at(target.data, target.size)
+            return output.decode("ascii") if decrypt else base64.b64encode(output).decode("ascii")
+        finally:
+            release = ctypes.WinDLL("kernel32").LocalFree
+            release.argtypes = [ctypes.c_void_p]
+            release.restype = ctypes.c_void_p
+            release(target.data)
+    except (OSError, ValueError):
+        raise ValueError("Windows에서 저장된 키를 처리하지 못했습니다. Gemini API 키를 다시 입력하세요.") from None
+
+
+def save_key(key):
+    encrypted = protect_key(key)
+    with tempfile.NamedTemporaryFile(dir=KEY_FILE.parent, delete=False) as temp:
+        pending = Path(temp.name)
+        try:
+            temp.write(encrypted.encode("ascii"))
+            temp.close()
+            pending.replace(KEY_FILE)
+        finally:
+            pending.unlink(missing_ok=True)
 
 
 def run_job(state, job, key, photos):
@@ -90,7 +133,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/status":
             with LOCK:
                 busy = any(run["status"] == "running" for run in RUNS.values())
-            return self.send_json(200, {"connected": True, "key": bool(os.environ.get("GEMINI_API_KEY")), "busy": busy})
+            env_key = bool(os.environ.get("GEMINI_API_KEY"))
+            saved = KEY_FILE.is_file()
+            return self.send_json(200, {"connected": True, "key": env_key or saved,
+                                        "envKey": env_key, "savedKey": saved, "busy": busy})
         if match := re.fullmatch(r"/api/run/([a-f0-9]{16})", path):
             with LOCK:
                 state = RUNS.get(match[1])
@@ -110,15 +156,29 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if (not self.local_request() or self.path != "/api/run"
+        if (not self.local_request() or self.path not in {"/api/run", "/api/key"}
                 or self.headers.get("Origin") != f"http://127.0.0.1:{self.server.server_port}"):
             return self.send_error(403)
         try:
             length = int(self.headers.get("Content-Length", 0))
-            if not 1 <= length <= 30_000_000:
+            limit = 2048 if self.path == "/api/key" else 30_000_000
+            if not 1 <= length <= limit:
                 raise ValueError("요청이 너무 큽니다. 상품 사진 용량을 줄여 주세요.")
             payload = json.loads(self.rfile.read(length))
-            key = os.environ.get("GEMINI_API_KEY") or payload["key"].strip()
+            typed_key = payload.get("key", "").strip()
+            if typed_key and (len(typed_key) > 512 or not typed_key.isascii() or any(ch.isspace() for ch in typed_key)):
+                raise ValueError("Gemini API 키 형식을 확인하세요.")
+            if self.path == "/api/key":
+                if payload.get("remove") is True:
+                    KEY_FILE.unlink(missing_ok=True)
+                    return self.send_json(200, {"savedKey": False})
+                if not typed_key:
+                    raise ValueError("저장할 Gemini API 키를 입력하세요.")
+                save_key(typed_key)
+                return self.send_json(200, {"savedKey": True})
+            key = os.environ.get("GEMINI_API_KEY") or typed_key
+            if not key and KEY_FILE.is_file():
+                key = protect_key(KEY_FILE.read_text(encoding="ascii"), decrypt=True)
             if not key:
                 raise ValueError("Gemini API 키를 입력하세요.")
             photos = payload["photos"]
@@ -132,6 +192,8 @@ class Handler(BaseHTTPRequestHandler):
                 job["footwear"] = footwear
         except (ValueError, KeyError, TypeError, AttributeError) as error:
             return self.send_json(400, {"error": str(error)})
+        except OSError:
+            return self.send_json(500, {"error": "저장된 Gemini API 키 파일에 접근할 수 없습니다."})
         token = uuid.uuid4().hex[:16]
         job["id"] = f"web-{token}"
         with LOCK:
