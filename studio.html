@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>OPPA STUDIO | 쇼츠 제작실</title>
+<style>
+:root{--paper:#f7f4ed;--ink:#262621;--muted:#68675c;--line:#ded9cc;--moss:#34443a;--gold:#dbbc83}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:14px/1.5 "Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:wait;opacity:.58}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #927138;outline-offset:3px}
+a{color:inherit}.shell{max-width:1430px;margin:auto;padding:0 44px 24px}
+.mast{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.brand,.eyebrow{font-size:10px;font-weight:800;letter-spacing:.21em}.brand{display:flex;align-items:center;gap:12px}
+.seal{display:grid;place-items:center;width:30px;height:30px;border:1px solid #a49982;border-radius:50%;font:18px Georgia,serif}
+.badge{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px}.badge:before{content:"";width:7px;height:7px;border-radius:50%;background:#ac8750}.badge.live:before{background:#618462}
+.intro{display:flex;justify-content:space-between;align-items:end;margin:20px 0 18px}
+h1{font:clamp(41px,5vw,72px)/.95 Georgia,serif;letter-spacing:-.06em;margin:5px 0 0}
+.intro p{margin:0 0 2px;color:var(--muted);font-size:13px}.eyebrow{color:#766747}
+.desk{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(285px,1fr);gap:19px;align-items:stretch}
+.panel{background:#fffcf6;border:1px solid var(--line);border-radius:18px;padding:19px 22px}
+.section{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;gap:8px}
+h2{font-size:14px;margin:0}.index{font:italic 14px Georgia,serif;color:#876b45;margin-right:8px}.plain{border:0;background:none;padding:2px;color:#6b5636;text-decoration:underline;text-underline-offset:4px;font-size:11px}
+.hosts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.host{padding:0;background:#f4ece1;text-align:left;border:1px solid transparent;border-radius:10px;overflow:hidden;color:var(--ink);position:relative}
+.host[aria-pressed=true]{border-color:#715b38;box-shadow:0 0 0 1px #715b38}
+.host[aria-pressed=true]:after{content:"✓";position:absolute;right:6px;top:6px;background:var(--moss);color:white;width:19px;height:19px;border-radius:50%;text-align:center;line-height:19px;font-size:11px}
+.portrait{height:clamp(78px,11vw,126px);overflow:hidden;position:relative;background:#e3d5c0}
+.portrait img{position:absolute;width:310%;max-width:none;left:0;top:calc(-1 * clamp(14px,3vw,32px))}
+.host span.copy{display:block;padding:6px 8px;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.host strong{display:block;font-size:13px;color:var(--ink)}
+.divider{height:1px;background:var(--line);margin:14px 0 12px}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:7px 11px}.wide{grid-column:1/-1}
+label{display:block;font-size:11px;font-weight:700;color:#4c4a40}
+input:not([type=range]),textarea,select{width:100%;margin-top:3px;border:1px solid var(--line);background:#fffdf8;border-radius:6px;padding:6px 8px;color:var(--ink);min-height:33px}
+textarea{resize:vertical;min-height:41px;display:block}input[type=file]{font-size:11px}input[type=file]::file-selector-button{border:0;border-radius:4px;background:#eae5d7;padding:3px 7px;margin-right:6px}
+.controls,.cost-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end;gap:9px;margin-top:9px}
+.duration{align-self:center}.duration input{display:block;width:100%;accent-color:var(--moss);margin:8px 0 0}
+.cost-inputs{grid-template-columns:1fr 1fr auto}
+.costs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px;padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:#f5efe2}
+.costs small{display:block;color:var(--muted);font-size:10px}
+.estimate{font-size:17px;font-weight:800;color:#423623;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.actions{display:flex;gap:8px;margin-top:12px}.btn{border:1px solid var(--line);padding:8px 13px;border-radius:7px;background:#f5efe2;color:var(--ink);font-weight:700;font-size:12px}
+.primary{background:var(--moss);border-color:var(--moss);color:white;flex:1}.primary:hover{background:#42594a}
+.notice{font-size:11px;color:var(--muted);margin:7px 0 0}
+.preview{padding:17px 20px;background:radial-gradient(ellipse at 62% 3%,#484c3d,#292e28 64%);color:#f7efdf;border-color:#343a31;display:flex;flex-direction:column;align-items:stretch}
+.preview .section{margin-bottom:9px}.preview .eyebrow{color:#dcc18e}
+.stage{display:flex;flex:1;min-height:285px;align-items:center;justify-content:center}
+video{height:min(43vh,400px);max-height:100%;max-width:100%;aspect-ratio:9/16;border:1px solid #757360;border-radius:13px;background:#171a16;box-shadow:0 12px 40px #151a15aa;object-fit:contain}
+.status{padding:9px 0 0;font-size:11px;color:#e7decb;min-height:29px}
+.photo-drop{border:1px dashed var(--line);border-radius:7px;padding:6px 8px}
+.photo-drop.dragging{border-color:var(--moss);background:#edf1e9}
+.photo-drop small{display:block;color:var(--muted);font-size:10px;margin-top:4px}
+pre{margin:4px 0 0;max-height:92px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.45 Consolas,monospace;color:#dbbc83}
+.download{color:#f3d499}.footer{font-size:10px;color:var(--muted);margin-top:11px;display:flex;justify-content:space-between;gap:12px}
+dialog{width:min(100% - 32px,1050px);border:1px solid var(--line);border-radius:14px;background:var(--paper);padding:12px}
+dialog::backdrop{background:#252a23ba}dialog img{display:block;width:100%;margin-top:8px;border-radius:7px}
+@media(max-width:850px){.shell{padding:0 20px 20px}.desk{grid-template-columns:minmax(0,1.45fr) minmax(240px,1fr)}.panel{padding:15px}.intro p{display:none}}
+@media(max-width:640px){.desk{grid-template-columns:1fr}.shell{padding:0 13px 15px}.intro{margin:18px 0}.portrait{height:100px}.stage{min-height:0}video{height:48vh}.fields{grid-template-columns:1fr}.footer{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="mast"><div class="brand"><span class="seal">O</span> OPPA STUDIO</div><div id="connection" class="badge">로컬 파일 모드</div></header>
+  <div class="intro"><div><div class="eyebrow">THE SHORTS EDIT</div><h1>Style Studio</h1></div><p>중년 남성의 오늘 코디를, 한 편의 쇼츠로.</p></div>
+  <div class="desk">
+    <form id="composer" class="panel">
+      <div class="section"><h2><span class="index">01</span>호스트</h2><button id="lookbook" class="plain" type="button">캐릭터 룩북 보기 ↗</button></div>
+      <div class="hosts" aria-label="호스트 선택">
+        <button class="host" type="button" data-host="A" aria-pressed="true"><div class="portrait"><img src="characters/A.png" alt=""></div><span class="copy"><strong>한유나</strong>눈웃음과 장난기</span></button>
+        <button class="host" type="button" data-host="B" aria-pressed="false"><div class="portrait"><img src="characters/B.png" alt=""></div><span class="copy"><strong>서혜원</strong>여유로운 플러팅</span></button>
+        <button class="host" type="button" data-host="C" aria-pressed="false"><div class="portrait"><img src="characters/C.png" alt=""></div><span class="copy"><strong>윤서하</strong>청순하고 다정한 말투</span></button>
+      </div>
+      <div class="divider"></div>
+      <div class="section"><h2><span class="index">02</span>상품과 영상 설정</h2><span class="eyebrow">9:16 · 720P</span></div>
+      <div class="fields">
+        <label>상품명<input id="product" required maxlength="55" placeholder="아이보리 모크넥 니트"></label>
+        <label>쿠팡 파트너스 링크<input id="link" type="url" required placeholder="https://link.coupang.com/…"></label>
+        <label class="wide">사진에서 확인되는 상품 특징<textarea id="facts" required maxlength="500" rows="1" placeholder="아이보리 컬러, 모크넥, 차콜 슬랙스와 코디"></textarea></label>
+        <div id="photoDrop" class="photo-drop">
+          <label>상품 사진 · 1~4장<input id="photos" type="file" accept=".png,.jpg,.jpeg,.webp" multiple required></label>
+          <small id="photoHint" aria-live="polite">여기에 끌어놓거나 Ctrl+V로 붙여넣기</small>
+        </div>
+        <label id="keyLabel" hidden>Gemini API 키<input id="key" type="password" autocomplete="off" placeholder="이 작업에만 사용"></label>
+      </div>
+      <div class="controls">
+        <label class="duration">길이 <output id="lengthText">15초</output><input id="seconds" type="range" min="10" max="20" value="15"></label>
+        <label>Veo 등급<select id="tier"><option value="lite">Lite</option><option value="fast">Fast</option><option value="standard">Standard</option></select></label>
+        <label>월 제작 편수<input id="monthlyCount" type="number" step="any" value="30"></label>
+      </div>
+      <div class="cost-inputs">
+        <label>Veo 단가 (USD/초)<input id="veoRate" type="number" step="any" value="0.05"></label>
+        <label>적용 환율 (원/USD)<input id="exchangeRate" type="number" step="any" value="1500"></label>
+        <a class="plain" href="https://ai.google.dev/gemini-api/docs/pricing#veo-3.1" target="_blank" rel="noopener noreferrer">공식 요금 ↗</a>
+      </div>
+      <div class="costs" aria-live="polite">
+        <div><small>건당 예상 비용</small><output id="estimate" class="estimate">300원</output></div>
+        <div><small>월 예상 합계</small><output id="monthlyEstimate" class="estimate">9,000원</output></div>
+      </div>
+      <div class="actions"><button class="btn primary" id="create" type="submit">쇼츠 제작</button><button class="btn" id="export" type="button">상품 목록 저장</button></div>
+      <p id="modeNote" class="notice">HTML 파일에서는 구성과 목록 저장이 가능합니다. 실제 제작은 Open Studio.cmd로 시작하세요.</p>
+    </form>
+    <section class="panel preview" aria-label="영상 미리보기">
+      <div class="section"><h2><span class="index">03</span>미리보기</h2><span id="previewType" class="eyebrow">DEMO EDIT</span></div>
+      <div class="stage"><video id="video" controls playsinline preload="metadata" aria-label="세로 쇼츠 미리보기"></video></div>
+      <div class="status" id="status" role="status">첨부 영상으로 만든 15초 무음 샘플</div>
+      <a id="download" class="download" hidden download="short.mp4">완성 MP4 저장 ↓</a>
+      <pre id="log" hidden aria-label="제작 로그"></pre>
+    </section>
+  </div>
+  <footer class="footer"><span>OPPA STUDIO / GEMINI + VEO</span><span>Veo 4초 1회 성공 기준. 대본·음성·최초 호스트 이미지 비용 별도. 기본 환율은 계산 예시입니다.</span></footer>
+</main>
+<dialog id="sheetDialog"><form method="dialog"><button class="btn">닫기</button></form><img id="sheet" alt="선택한 호스트의 얼굴과 전신 착장 룩북"></dialog>
+<script>
+const get = id => document.getElementById(id);
+const offline = location.protocol === "file:";
+const rates = {lite:.05,fast:.10,standard:.40};
+const formatWon = new Intl.NumberFormat("ko-KR", {maximumFractionDigits:0});
+const preview = get("video");
+preview.src = offline ? "demo/preview.mp4" : "preview.mp4";
+let selected = "A", connected = false, needsKey = true;
+const photoInput = get("photos");
+const photoDrop = get("photoDrop");
+const imageExtensions = {"image/png":"png","image/jpeg":"jpg","image/webp":"webp"};
+function showPhotoCount() {
+  const count = photoInput.files.length;
+  get("photoHint").textContent = count ? `사진 ${count}장 · 끌어놓기 또는 Ctrl+V로 추가`
+    : "여기에 끌어놓거나 Ctrl+V로 붙여넣기";
+}
+function addPhotos(incoming) {
+  const images = incoming.filter(file => /\.(png|jpe?g|webp)$/i.test(file.name) || imageExtensions[file.type]);
+  if (!images.length) {
+    get("photoHint").textContent = "PNG, JPG, WebP 사진을 넣어 주세요.";
+    return;
+  }
+  if (photoInput.files.length + images.length > 4) {
+    get("photoHint").textContent = "최대 4장까지 넣을 수 있습니다. 파일 선택으로 사진을 다시 고를 수 있습니다.";
+    return;
+  }
+  const transfer = new DataTransfer();
+  for (const file of photoInput.files) transfer.items.add(file);
+  for (const [index, file] of images.entries()) {
+    const named = /\.(png|jpe?g|webp)$/i.test(file.name) ? file : new File(
+      [file], `photo-${Date.now()}-${index + 1}.${imageExtensions[file.type]}`, {type:file.type}
+    );
+    transfer.items.add(named);
+  }
+  photoInput.files = transfer.files;
+  showPhotoCount();
+}
+photoInput.addEventListener("change", showPhotoCount);
+photoDrop.addEventListener("dragover", event => {
+  event.preventDefault();
+  photoDrop.classList.add("dragging");
+});
+photoDrop.addEventListener("dragleave", event => {
+  if (!photoDrop.contains(event.relatedTarget)) photoDrop.classList.remove("dragging");
+});
+photoDrop.addEventListener("drop", event => {
+  event.preventDefault();
+  photoDrop.classList.remove("dragging");
+  addPhotos(Array.from(event.dataTransfer.files));
+});
+document.addEventListener("paste", event => {
+  const images = Array.from(event.clipboardData?.files ?? []).filter(file => imageExtensions[file.type]);
+  if (!images.length) return;
+  event.preventDefault();
+  const timestamp = Date.now();
+  addPhotos(images.map((file, index) => new File(
+    [file], `paste-${timestamp}-${index + 1}.${imageExtensions[file.type]}`, {type:file.type}
+  )));
+});
+document.querySelectorAll(".host").forEach(button => button.onclick = () => {
+  selected = button.dataset.host;
+  document.querySelectorAll(".host").forEach(item => item.setAttribute("aria-pressed", item === button));
+});
+get("lookbook").onclick = () => {
+  get("sheet").src = "characters/" + selected + ".png";
+  get("sheetDialog").showModal();
+};
+get("seconds").oninput = () => get("lengthText").value = get("seconds").value + "초";
+function updateCosts() {
+  const rate = get("veoRate").valueAsNumber;
+  const exchange = get("exchangeRate").valueAsNumber;
+  const count = get("monthlyCount").valueAsNumber;
+  const perVideo = rate * 4 * exchange;
+  const validCost = rate >= 0 && exchange > 0 && Number.isFinite(perVideo);
+  const monthly = perVideo * count;
+  get("estimate").value = validCost ? formatWon.format(perVideo) + "원" : "—";
+  get("monthlyEstimate").value = validCost && Number.isSafeInteger(count) && count >= 0 && Number.isFinite(monthly)
+    ? formatWon.format(monthly) + "원" : "—";
+}
+get("tier").onchange = () => {
+  get("veoRate").value = rates[get("tier").value];
+  updateCosts();
+};
+get("veoRate").oninput = () => {
+  rates[get("tier").value] = get("veoRate").value;
+  updateCosts();
+};
+get("exchangeRate").oninput = updateCosts;
+get("monthlyCount").oninput = updateCosts;
+const data = () => ({id:"studio-product", host:selected, product:get("product").value.trim(),
+  facts:get("facts").value.trim(), affiliate_url:get("link").value.trim(),
+  seconds:Number(get("seconds").value), veo:get("tier").value});
+function validate() {
+  if (!get("composer").reportValidity()) return false;
+  if (!/^https:\/\/link\.coupang\.com\/[a-zA-Z0-9][^\s]*$/i.test(get("link").value.trim())) {
+    get("status").textContent = "발급받은 link.coupang.com 파트너스 링크를 입력하세요.";
+    return false;
+  }
+  if (get("photos").files.length > 4) {
+    get("status").textContent = "상품 사진을 최대 4장까지 선택하세요.";
+    return false;
+  }
+  return true;
+}
+get("export").onclick = () => {
+  if (!validate()) return;
+  const job = {...data(), images:Array.from(get("photos").files, file => file.name)};
+  const url = URL.createObjectURL(new Blob([JSON.stringify([job],null,2)], {type:"application/json"}));
+  const link = document.createElement("a");
+  link.href = url; link.download = "products.json"; link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  get("status").textContent = "상품 목록을 저장했습니다. CLI에서 사용할 때는 선택한 사진을 JSON 옆에 두세요.";
+};
+async function request(path, options) {
+  const response = await fetch(path, options);
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.error || "요청을 완료하지 못했습니다.");
+  return payload;
+}
+if (!offline) request("/api/status").then(state => {
+  connected = state.connected;
+  needsKey = !state.key;
+  get("keyLabel").hidden = !needsKey;
+  get("connection").textContent = "로컬 제작기 연결됨";
+  get("connection").classList.add("live");
+  get("modeNote").textContent = "첫 제작 시 선택한 호스트의 기준 이미지를 생성합니다. 이후 같은 이미지를 재사용합니다.";
+}).catch(() => {});
+function encode(file) {
+  return new Promise((resolve,reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({name:file.name,data:reader.result.split(",")[1]});
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+get("composer").onsubmit = async event => {
+  event.preventDefault();
+  if (!connected) {
+    get("status").textContent = "프로젝트 폴더의 Open Studio.cmd를 더블클릭하면 웹 제작기가 연결됩니다.";
+    return;
+  }
+  if (!validate()) return;
+  const key = get("key").value.trim();
+  if (needsKey && !key) { get("key").focus(); get("status").textContent = "Gemini API 키를 입력하세요."; return; }
+  const files = Array.from(get("photos").files);
+  if (files.reduce((total,file) => total + file.size, 0) > 21000000) {
+    get("status").textContent = "상품 사진의 합계 용량을 21MB 이하로 줄여 주세요."; return;
+  }
+  const job = data();
+  get("create").disabled = true;
+  get("status").textContent = "제작을 시작합니다…";
+  get("download").hidden = true;
+  get("log").hidden = true;
+  try {
+    const photos = await Promise.all(files.map(encode));
+    const {id} = await request("/api/run", {method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({key,job,photos})});
+    get("key").value = "";
+    let state;
+    do {
+      await new Promise(resolve => setTimeout(resolve, 1700));
+      state = await request("/api/run/" + id);
+      get("log").textContent = state.log;
+      get("log").hidden = !state.log;
+      get("log").scrollTop = get("log").scrollHeight;
+    } while (state.status === "running");
+    if (state.status === "error") throw new Error(state.error);
+    preview.src = state.video;
+    get("previewType").textContent = "FINAL EDIT";
+    get("status").textContent = "쇼츠 제작 완료";
+    get("download").href = state.video;
+    get("download").hidden = false;
+  } catch(error) {
+    get("status").textContent = error.message || "제작을 완료하지 못했습니다.";
+  } finally {
+    get("create").disabled = false;
+  }
+};
+</script>
+</body>
+</html>

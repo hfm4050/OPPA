@@ -1,0 +1,15 @@
+[
+  {
+    "id": "reference-edit",
+    "host": "A",
+    "product": "중년 남성 톤온톤 코디",
+    "facts": "첨부 영상의 스타일링을 사용한 편집 샘플",
+    "affiliate_url": "https://link.coupang.com/REPLACE-ME",
+    "images": ["demo/navy.jpg", "demo/camel.jpg"],
+    "seconds": 15,
+    "script": {
+      "hook": "30대 여자가 뽑은 오빠 룩",
+      "lines": ["오늘은 이 조합 어때요?", "아이보리에 네이비나 카멜을 더해요.", "상품은 프로필에서 확인하세요."]
+    }
+  }
+]

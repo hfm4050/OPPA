@@ -1,0 +1,7 @@
+/hosts/
+/output/
+/products.json
+/.run.lock
+/__pycache__/
+/.oppa-update/
+/.oppa-publish/
