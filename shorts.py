@@ -35,7 +35,7 @@ class Host:
 HOSTS = {
     "A": Host(
         "한유나",
-        "32 years old, 168 cm, 51 kg, athletic fitness-trainer build with strong glutes and legs, "
+        "32 years old, 168 cm, 51 kg, slender build with natural proportions and soft muscle definition, "
         "heart-shaped face, bright warm brown almond eyes, "
         "fresh peach blush and a natural coral lip, "
         "one subtle cheek dimple, long chestnut-brown loose waves with wispy side fringe, "
@@ -59,6 +59,7 @@ HOSTS = {
     "C": Host(
         "윤서하",
         "43 years old, 166 cm, 54 kg, slender balanced build, soft oval face, gently straight brows, "
+        "fair clear luminous ivory-toned skin with realistic skin texture, "
         "clear dark eyes, chin-length deep-brown bob tucked behind one ear with a center part, "
         "close-fitting ivory boat-neck knit, fitted navy knee-length pencil skirt with a thigh-high side slit, "
         "sheer skin-tone tights, and cream pointed stiletto pumps",
